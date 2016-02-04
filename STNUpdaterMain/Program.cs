@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.OleDb;
 using System.IO;
 using System.Linq;
+using MySql.Data.MySqlClient;
 
 namespace STNUpdater
 {
@@ -15,22 +16,46 @@ namespace STNUpdater
             var excelConnectionString = GetExcelConnectionString(fileName);
             var dbConnectionString = GetDbConnectionString();
 
-            var products = GetProductsFromFile(fileName, excelConnectionString);
-            int warranty;
+            var products = GetProductsFromFile(excelConnectionString);
+            TestDbConnection(dbConnectionString);
 
-            products = products.Where(p => p.Warranty != null || Int32.TryParse(p.Warranty, out warranty)).ToList();
+            int warranty;
+            products = products.Where(p => p.Warranty != null || int.TryParse(p.Warranty, out warranty)).ToList();
             
             Console.WriteLine(fileName);
             Console.WriteLine("All done!!!");
             Console.ReadLine();
         }
 
-        private static string GetDbConnectionString()
+        private static void TestDbConnection(string dbConnectionString)
         {
-            return String.Empty;
+            using (var conn = new MySqlConnection(dbConnectionString))
+            using (var cmd = conn.CreateCommand())
+            {    //watch out for this SQL injection vulnerability below
+                cmd.CommandText = "SELECT * FROM cs_stonet.produse";
+                conn.Open();
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    
+                }
+                
+            }
         }
 
-        private static List<Product> GetProductsFromFile(string fileName, string excelConnectionString)
+        private static string GetDbConnectionString()
+        {
+            var connString = new MySqlConnectionStringBuilder
+            {
+                Server = "127.0.0.1",
+                UserID = "root",
+                Password = "12345678",
+                Database = "cs_stonet"
+            };
+            return connString.ToString();
+        }
+
+        private static List<Product> GetProductsFromFile(string excelConnectionString)
         {
             var products = new List<Product>();
             try
@@ -40,8 +65,13 @@ namespace STNUpdater
                     conn.Open();
 
                     var dt = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
-                    List<string> sheetNames = new List<string>();
-                    sheetNames.AddRange(dt.Rows.Cast<DataRow>().Select(row => row["TABLE_NAME"].ToString()).Where(tableName => tableName.EndsWith("$") || tableName.EndsWith("$'")));
+                    var sheetNames = new List<string>();
+                    if (dt != null)
+                    {
+                        sheetNames.AddRange(dt.Rows.Cast<DataRow>()
+                                .Select(row => row["TABLE_NAME"].ToString())
+                                .Where(tableName => tableName.EndsWith("$") || tableName.EndsWith("$'")));
+                    }
                     foreach (var sheetName in sheetNames)
                     {
                         using (var cmd = conn.CreateCommand())
@@ -56,9 +86,9 @@ namespace STNUpdater
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                var message = String.Format("An error has occured: {0}", ex.Message);
+                var message = $"An error has occured: {ex.Message}";
                 Console.WriteLine(message);
             }
             
