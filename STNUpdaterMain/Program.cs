@@ -5,6 +5,7 @@ using System.Data.OleDb;
 using System.IO;
 using System.Linq;
 using MySql.Data.MySqlClient;
+using STNUpdater.Models;
 
 namespace STNUpdater
 {
@@ -17,7 +18,8 @@ namespace STNUpdater
             var dbConnectionString = GetDbConnectionString();
 
             var products = GetProductsFromFile(excelConnectionString);
-            TestDbConnection(dbConnectionString);
+            var categories = GetDbCategories(dbConnectionString);
+            var makers = GetDbMakers(dbConnectionString);
 
             int warranty;
             products = products.Where(p => p.Warranty != null || int.TryParse(p.Warranty, out warranty)).ToList();
@@ -27,20 +29,54 @@ namespace STNUpdater
             Console.ReadLine();
         }
 
-        private static void TestDbConnection(string dbConnectionString)
+        private static List<Category> GetDbCategories(string dbConnectionString)
         {
+            var results = new List<Category>();
+
             using (var conn = new MySqlConnection(dbConnectionString))
             using (var cmd = conn.CreateCommand())
-            {    //watch out for this SQL injection vulnerability below
-                cmd.CommandText = "SELECT * FROM cs_stonet.produse";
+            {    
+                cmd.CommandText = "SELECT id_categorie, nume_categorie FROM cs_stonet.categorii;";
                 conn.Open();
                 var reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
-                    
+                    var category = new Category
+                    {
+                        Id = Convert.ToInt32(reader["id_categorie"]),
+                        Name = Convert.ToString(reader["nume_categorie"])
+                    };
+                    results.Add(category);
                 }
                 
             }
+
+            return results;
+        }
+
+        private static List<Maker> GetDbMakers(string dbConnectionString)
+        {
+            var results = new List<Maker>();
+
+            using (var conn = new MySqlConnection(dbConnectionString))
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT id_producator, nume_producator FROM cs_stonet.producatori;";
+                conn.Open();
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    var maker = new Maker
+                    {
+                        Id = Convert.ToInt32(reader["id_producator"]),
+                        Name = Convert.ToString(reader["nume_producator"])
+                    };
+                    results.Add(maker);
+                }
+
+            }
+
+            return results;
         }
 
         private static string GetDbConnectionString()
@@ -49,10 +85,10 @@ namespace STNUpdater
             {
                 Server = "127.0.0.1",
                 UserID = "root",
-                Password = "12345678",
+                Password = "fastweb321#",
                 Database = "cs_stonet"
             };
-            return connString.ToString();
+            return "server = 127.0.0.1;uid=root;pwd=fastweb321#;database=cs_stonet;";
         }
 
         private static List<Product> GetProductsFromFile(string excelConnectionString)
@@ -110,14 +146,12 @@ namespace STNUpdater
             var products = ds.Tables[0].AsEnumerable()
                                        .Select(dataRow => new Product
                                        {
-                                           Range = dataRow.Field<string>("F1"),
+                                           Name = dataRow.Field<string>("F5"),
                                            Category = dataRow.Field<string>("F2"),
-                                           Subcategory = dataRow.Field<string>("F3"),
                                            Maker = dataRow.Field<string>("F4"),
+                                           Model = dataRow.Field<string>("F4"),
                                            Code = dataRow.Field<string>("F5"),
-                                           Description = dataRow.Field<string>("F6"),
-                                           Price = dataRow.Field<string>("F7"),
-                                           Currency = dataRow.Field<string>("F8"),
+                                           ShortDescription = dataRow.Field<string>("F6"),
                                            Warranty = dataRow.Field<string>("F10")
                                        }).ToList();
             return products;
