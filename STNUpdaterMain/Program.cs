@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.OleDb;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using MySql.Data.MySqlClient;
 using STNUpdater.Models;
 
@@ -18,15 +19,88 @@ namespace STNUpdater
             var dbConnectionString = GetDbConnectionString();
 
             var products = GetProductsFromFile(excelConnectionString);
+            int warranty;
+            products = products.Where(p => p.Warranty != null && int.TryParse(p.Warranty, out warranty)).ToList();
+            var productsNamesFromDb = GetDbProducts(dbConnectionString);
+            products = products.Where(p => !productsNamesFromDb.Any(
+                            pn => string.Equals(pn, p.Name, StringComparison.CurrentCultureIgnoreCase))).ToList();
+
             var categories = GetDbCategories(dbConnectionString);
             var makers = GetDbMakers(dbConnectionString);
-
-            int warranty;
-            products = products.Where(p => p.Warranty != null || int.TryParse(p.Warranty, out warranty)).ToList();
             
+
+            PopulateCategoryIds(products, categories);
+            PopulateMakerIds(products, makers);
+
+            InsertProductsInDb(products, dbConnectionString);
+
             Console.WriteLine(fileName);
             Console.WriteLine("All done!!!");
             Console.ReadLine();
+        }
+
+        private static void InsertProductsInDb(List<Product> products, string dbConnectionString)
+        {
+            if (!products.Any()) return;
+
+            //TODO Use transaction
+            using (var conn = new MySqlConnection(dbConnectionString))
+            using (var cmd = conn.CreateCommand())
+            {
+                conn.Open();
+                products.ForEach(p =>
+                {
+                    p.ShortDescription = p.ShortDescription.Replace("\'","");
+                    cmd.CommandText = "INSERT INTO cs_stonet.produse (nume_produs, id_categorie,id_producator," +
+                                      "model,cod_producator,scurta_descriere,garantie)" +
+                                     $"VALUES('{p.Name}',{p.CategoryId},{p.MakerId},'{p.Model}','{p.Code}','{p.ShortDescription.Remove(p.ShortDescription.Length - 1)}',{p.Warranty})";
+                    cmd.ExecuteNonQuery();
+                });
+                conn.Close();
+            }
+        }
+
+        private static List<string> GetDbProducts(string dbConnectionString)
+        {
+            var results = new List<string>();
+
+            using (var conn = new MySqlConnection(dbConnectionString))
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT nume_produs FROM cs_stonet.produse;";
+                conn.Open();
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    results.Add(Convert.ToString(reader["nume_produs"]));
+                }
+            }
+
+            return results;
+        }
+
+        private static void PopulateMakerIds(List<Product> products, List<Maker> makers)
+        {
+            products.ForEach(p =>
+            {
+                var maker = makers.FirstOrDefault(m => string.Equals(m.Name, p.Maker, StringComparison.CurrentCultureIgnoreCase));
+                if (maker != null)
+                {
+                    p.MakerId = maker.Id;
+                }
+            });
+        }
+
+        private static void PopulateCategoryIds(List<Product> products, List<Category> categories)
+        {
+            products.ForEach(p =>
+            {
+                var category = categories.FirstOrDefault(c => string.Equals(c.Name, p.Category, StringComparison.CurrentCultureIgnoreCase));
+                if (category != null)
+                {
+                    p.CategoryId = category.Id;
+                }
+            });
         }
 
         private static List<Category> GetDbCategories(string dbConnectionString)
