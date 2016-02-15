@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using MySql.Data.MySqlClient;
 using STNUpdater.Models;
 
@@ -22,9 +22,10 @@ namespace STNUpdater
             int warranty;
             products = products.Where(p => p.Warranty != null && int.TryParse(p.Warranty, out warranty)).ToList();
             var productsNamesFromDb = GetDbProducts(dbConnectionString);
-            products = products.Where(p => !productsNamesFromDb.Any(
-                            pn => string.Equals(pn, p.Name, StringComparison.CurrentCultureIgnoreCase))).ToList();
-
+            
+            products = products.Where(p => productsNamesFromDb.All(
+                            pn => string.Compare(pn, p.Name, StringComparison.OrdinalIgnoreCase) != 0)).ToList();
+            
             var categories = GetDbCategories(dbConnectionString);
             var makers = GetDbMakers(dbConnectionString);
             
@@ -42,21 +43,35 @@ namespace STNUpdater
         private static void InsertProductsInDb(List<Product> products, string dbConnectionString)
         {
             if (!products.Any()) return;
-
-            //TODO Use transaction
             using (var conn = new MySqlConnection(dbConnectionString))
             using (var cmd = conn.CreateCommand())
             {
                 conn.Open();
-                products.ForEach(p =>
+                var transaction = conn.BeginTransaction();
+                cmd.Transaction = transaction;
+
+                try
                 {
-                    p.ShortDescription = p.ShortDescription.Replace("\'","");
-                    cmd.CommandText = "INSERT INTO cs_stonet.produse (nume_produs, id_categorie,id_producator," +
-                                      "model,cod_producator,scurta_descriere,garantie)" +
-                                     $"VALUES('{p.Name}',{p.CategoryId},{p.MakerId},'{p.Model}','{p.Code}','{p.ShortDescription.Remove(p.ShortDescription.Length - 1)}',{p.Warranty})";
-                    cmd.ExecuteNonQuery();
-                });
-                conn.Close();
+                    products.ForEach(p =>
+                    {
+                        p.ShortDescription = p.ShortDescription.Replace("\'", "");
+                        cmd.CommandText =
+                            "INSERT INTO cs_stonet.produse (nume_produs, id_categorie,id_producator," +
+                            "model,cod_producator,scurta_descriere,garantie)" +
+                            $"VALUES('{p.Name}',{p.CategoryId},{p.MakerId},'{p.Model}','{p.Code}','{p.ShortDescription.Remove(p.ShortDescription.Length - 1)}',{p.Warranty})";
+                        cmd.ExecuteNonQuery();
+                    });
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine($"An error has occured: {ex.Message}");
+                }
+                finally
+                {
+                    conn.Close();
+                }
             }
         }
 
