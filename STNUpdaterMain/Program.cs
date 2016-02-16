@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using MySql.Data.MySqlClient;
 using STNUpdater.Models;
@@ -14,13 +12,11 @@ namespace STNUpdater
     {
         static void Main()
         {
-            var fileName = GetFileName();
-            var excelConnectionString = GetExcelConnectionString(fileName);
+            var source = new FileSource();
+            var products = source.GetProducts();
+
             var dbConnectionString = GetDbConnectionString();
 
-            var products = GetProductsFromFile(excelConnectionString);
-            int warranty;
-            products = products.Where(p => p.Warranty != null && int.TryParse(p.Warranty, out warranty)).ToList();
             var productsNamesFromDb = GetDbProducts(dbConnectionString);
             
             products = products.Where(p => productsNamesFromDb.All(
@@ -35,7 +31,6 @@ namespace STNUpdater
 
             InsertProductsInDb(products, dbConnectionString);
 
-            Console.WriteLine(fileName);
             Console.WriteLine("All done!!!");
             Console.ReadLine();
         }
@@ -218,16 +213,6 @@ namespace STNUpdater
             }
             
             return products;
-        }
-
-        private static string GetFileName()
-        {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "oferte", "oferta_NOD_2015_12_08.xls");
-        }
-
-        private static string GetExcelConnectionString(string fileName)
-        {
-            return "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + fileName + ";Extended Properties=\"Excel 12.0;IMEX=1;HDR=NO;TypeGuessRows=0;ImportMixedTypes=Text\"";
         }
 
         private static IEnumerable<Product> MapDataSetToProducts(DataSet ds)
