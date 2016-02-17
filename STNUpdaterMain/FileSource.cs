@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.OleDb;
 using System.IO;
 using System.Linq;
+using System.Windows.Forms;
 using STNUpdater.Models;
 
 namespace STNUpdater
@@ -12,8 +13,27 @@ namespace STNUpdater
     {
         public FileSource()
         {
-            FileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "oferte", "oferta_NOD_2015_12_08.xls");
+            FileName = GetFileName();
             ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + FileName + ";Extended Properties=\"Excel 12.0;IMEX=1;HDR=NO;TypeGuessRows=0;ImportMixedTypes=Text\"";
+        }
+
+        private string GetFileName()
+        {
+            var fileName = string.Empty;
+
+            var dialog = new OpenFileDialog
+            {
+                Filter = "All Files (*.*)|*.*",
+                FilterIndex = 1,
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                fileName = dialog.FileName;
+            }
+
+            return fileName;
         }
 
         public List<Product> GetProducts()
