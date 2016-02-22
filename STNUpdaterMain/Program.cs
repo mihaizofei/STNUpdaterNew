@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.OleDb;
 using System.Linq;
-using MySql.Data.MySqlClient;
 using STNUpdater.Models;
 
 namespace STNUpdater
 {
     class Program
     {
-        [STAThreadAttribute]
+        [STAThread]
         static void Main()
         {
             var source = new FileSource();
@@ -24,15 +21,20 @@ namespace STNUpdater
             
             var categories = repository.GetCategories();
             var makers = repository.GetMakers();
-            
 
             PopulateCategoryIds(products, categories);
+            products = FilterNoCategoryItems(products);
             PopulateMakerIds(products, makers);
 
             repository.InsertProducts(products);
 
-            Console.WriteLine("All done!!!");
+            Console.WriteLine($"{products.Count} products inserted!! All done!!!");
             Console.ReadLine();
+        }
+
+        private static List<Product> FilterNoCategoryItems(List<Product> products)
+        {
+            return products.Where(p => p.CategoryId != 0).ToList();
         }
 
         private static void PopulateMakerIds(List<Product> products, List<Maker> makers)

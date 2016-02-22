@@ -23,7 +23,7 @@ namespace STNUpdater
 
             var dialog = new OpenFileDialog
             {
-                Filter = "All Files (*.*)|*.*",
+                Filter = "All Files (*.xlsx)|*.xlsx|(*.xls)|*.xls",
                 FilterIndex = 1,
                 Multiselect = false
             };
@@ -79,13 +79,13 @@ namespace STNUpdater
             return products;
         }
 
-        private static IEnumerable<Product> MapDataSetToProducts(DataSet ds)
+        private IEnumerable<Product> MapDataSetToProducts(DataSet ds)
         {
             var products = ds.Tables[0].AsEnumerable()
                                        .Select(dataRow => new Product
                                        {
                                            Name = dataRow.Field<string>("F5"),
-                                           Category = dataRow.Field<string>("F2"),
+                                           Category = MapCategoryName(dataRow.Field<string>("F2")),
                                            Maker = dataRow.Field<string>("F4"),
                                            Model = dataRow.Field<string>("F4"),
                                            Code = dataRow.Field<string>("F5"),
@@ -95,7 +95,57 @@ namespace STNUpdater
             return products;
         }
 
-        public string FileName { get; set; }
-        public string ConnectionString { get; set; }
+        private string MapCategoryName(string categoryName)
+        {
+            if (string.IsNullOrEmpty(categoryName?.Trim())) return categoryName;
+
+            switch (categoryName.ToLower())
+            {
+                case "desktop components":
+                case "notebook components":
+                    return "Componente";
+                case "nb/dt accessories":
+                    return "Accesorii";
+                case "external hdd":
+                    return "Hard Disk-uri";
+                case "usb flash drive":
+                    return "Flash USB";
+                case "memory card":
+                    return "Compact Flash Card";
+                case "usb hub":
+                case "network":
+                case "switch & accessories":
+                case "router & accessories":
+                case "wireless":
+                case "kvm & remote manag":
+                case "network adapter":
+                    return "Retelistica";
+                case "hdd enclosure":
+                    return "Hard Disk-uri";
+                case "external odd":
+                    return "DVD Writer";
+                case "home entertainment":
+                    return "Boxe";
+                case "input devices":
+                    return "Tastaturi";
+                case "personal audio":
+                    return "Casti";
+                case "webcam":
+                    return "Webcam";
+                case "accessories":
+                    return "Accesorii";
+                case "other peripherals":
+                    return "Periferice";
+                case "tablet accessories":
+                    return "Tablete";
+                case "ups":
+                    return "UPS";
+                default:
+                    return categoryName;
+            }
+        }
+
+        private string FileName { get; set; }
+        private string ConnectionString { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using MySql.Data.MySqlClient;
 using STNUpdater.Models;
@@ -10,7 +11,7 @@ namespace STNUpdater
     {
         public DbRepository()
         {
-            ConnectionString = "server = 127.0.0.1;uid=root;pwd=fastweb321#;database=cs_stonet;";
+            ConnectionString = ConfigurationManager.ConnectionStrings["StonetDbConnectionString"].ConnectionString;
         }
 
         public List<string> GetProductsNames()
@@ -82,7 +83,7 @@ namespace STNUpdater
             return results;
         }
 
-        public void InsertProducts(List<Product> products)
+        public void InsertProducts(IEnumerable<Product> products)
         {
             if (!products.Any()) return;
             using (var conn = new MySqlConnection(ConnectionString))
@@ -94,7 +95,7 @@ namespace STNUpdater
 
                 try
                 {
-                    products.ForEach(p =>
+                    products.ToList().ForEach(p =>
                     {
                         p.ShortDescription = p.ShortDescription.Replace("\'", "");
                         cmd.CommandText =
