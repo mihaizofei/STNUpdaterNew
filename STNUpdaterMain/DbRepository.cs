@@ -16,6 +16,7 @@ namespace STNUpdater
 
         public List<string> GetProductsNames()
         {
+            Console.WriteLine("Getting existing products names from DB...");
             var results = new List<string>();
 
             using (var conn = new MySqlConnection(ConnectionString))
@@ -35,6 +36,7 @@ namespace STNUpdater
 
         public List<Category> GetCategories()
         {
+            Console.WriteLine("Getting categories from DB...");
             var results = new List<Category>();
 
             using (var conn = new MySqlConnection(ConnectionString))
@@ -60,6 +62,7 @@ namespace STNUpdater
 
         public List<Maker> GetMakers()
         {
+            Console.WriteLine("Getting makers from DB...");
             var results = new List<Maker>();
 
             using (var conn = new MySqlConnection(ConnectionString))
@@ -85,6 +88,7 @@ namespace STNUpdater
 
         public void InsertProducts(IEnumerable<Product> products)
         {
+            Console.WriteLine("Saving products in DB...");
             if (!products.Any()) return;
             using (var conn = new MySqlConnection(ConnectionString))
             using (var cmd = conn.CreateCommand())
@@ -109,7 +113,7 @@ namespace STNUpdater
                 catch (Exception ex)
                 {
                     transaction.Rollback();
-                    Console.WriteLine($"An error has occured: {ex.Message}");
+                    Console.WriteLine($"An error has occured in InsertProducts method: {ex.Message}");
                 }
                 finally
                 {

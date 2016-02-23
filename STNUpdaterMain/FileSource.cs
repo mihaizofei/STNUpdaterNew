@@ -38,6 +38,7 @@ namespace STNUpdater
 
         public List<Product> GetProducts()
         {
+            Console.WriteLine("Extracting products from file...");
             var products = new List<Product>();
             try
             {
@@ -62,6 +63,7 @@ namespace STNUpdater
                             var adapter = new OleDbDataAdapter(cmd);
                             var ds = new DataSet();
                             adapter.Fill(ds);
+                            if (ds.Tables[0].Columns.Count < 10) continue;
                             products.AddRange(MapDataSetToProducts(ds));
                         }
                     }
@@ -69,7 +71,7 @@ namespace STNUpdater
             }
             catch (Exception ex)
             {
-                var message = $"An error has occured: {ex.Message}";
+                var message = $"An error has occured in GetProducts method: {ex.Message}";
                 Console.WriteLine(message);
             }
 
