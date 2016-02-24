@@ -15,19 +15,26 @@ namespace STNUpdater
 
             var repository = new DbRepository();
             var products = source.GetProducts();
-            var existingProductsName = repository.GetProductsNames();
+            if (products.Any())
+            {
+                var existingProductsName = repository.GetProductsNames();
 
-            Console.WriteLine("Eliminating existing products...");
-            products = products.Where(p => existingProductsName.All(pn => string.Compare(pn, p.Name, StringComparison.OrdinalIgnoreCase) != 0)).ToList();
+                Console.WriteLine("Eliminating existing products...");
+                products =
+                    products.Where(
+                        p =>
+                            existingProductsName.All(
+                                pn => string.Compare(pn, p.Name, StringComparison.OrdinalIgnoreCase) != 0)).ToList();
 
-            var categories = repository.GetCategories();
-            var makers = repository.GetMakers();
-            PopulateCategoryIds(products, categories);
+                var categories = repository.GetCategories();
+                var makers = repository.GetMakers();
+                PopulateCategoryIds(products, categories);
 
-            products = FilterNoCategoryItems(products);
+                products = FilterNoCategoryItems(products);
 
-            PopulateMakerIds(products, makers);
-            repository.InsertProducts(products);
+                PopulateMakerIds(products, makers);
+                repository.InsertProducts(products);
+            }
 
             PrintFinishText(products.Count);
         }
